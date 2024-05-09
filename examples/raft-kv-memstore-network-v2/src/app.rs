@@ -15,19 +15,21 @@ pub type ResponseTx = oneshot::Sender<String>;
 pub type RequestTx = mpsc::UnboundedSender<(Path, Payload, ResponseTx)>;
 
 /// Representation of an application state.
+#[derive(Clone)]
 pub struct App {
     pub id: NodeId,
     pub raft: typ::Raft,
+    pub addr: String,
 
     /// Receive application requests, Raft protocol request or management requests.
-    pub rx: mpsc::UnboundedReceiver<(Path, Payload, ResponseTx)>,
+    pub rx: Arc<mpsc::UnboundedReceiver<(Path, Payload, ResponseTx)>>,
     pub router: Router,
 
     pub state_machine: Arc<StateMachineStore>,
 }
 
 impl App {
-    pub fn new(id: NodeId, raft: typ::Raft, router: Router, state_machine: Arc<StateMachineStore>) -> Self {
+    pub fn new(id: NodeId, raft: typ::Raft, addr: String, router: Router, state_machine: Arc<StateMachineStore>) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 
         {
@@ -35,9 +37,12 @@ impl App {
             targets.insert(id, tx);
         }
 
+        let rx = Arc::new(rx);
+
         Self {
             id,
             raft,
+            addr,
             rx,
             router,
             state_machine,

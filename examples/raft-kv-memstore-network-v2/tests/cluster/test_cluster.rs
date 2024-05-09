@@ -58,8 +58,8 @@ async fn test_cluster() {
 
     let local = LocalSet::new();
 
-    let (raft1, app1) = new_raft(1, router.clone()).await;
-    let (raft2, app2) = new_raft(2, router.clone()).await;
+    let (raft1, app1) = new_raft(1, router.clone(), "".to_string()).await;
+    let (raft2, app2) = new_raft(2, router.clone(), "".to_string()).await;
 
     let rafts = [raft1, raft2];
 

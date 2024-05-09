@@ -13,6 +13,7 @@ use crate::store::StateMachineData;
 
 pub mod router;
 
+pub mod actixweb;
 pub mod api;
 pub mod app;
 pub mod network;
@@ -69,7 +70,7 @@ pub fn decode<T: serde::de::DeserializeOwned>(s: &str) -> T {
     serde_json::from_str(s).unwrap()
 }
 
-pub async fn new_raft(node_id: NodeId, router: Router) -> (typ::Raft, App) {
+pub async fn new_raft(node_id: NodeId, router: Router, addr: String) -> (typ::Raft, App) {
     // Create a configuration for the raft instance.
     let config = Config {
         heartbeat_interval: 500,
@@ -94,7 +95,7 @@ pub async fn new_raft(node_id: NodeId, router: Router) -> (typ::Raft, App) {
         .await
         .unwrap();
 
-    let app = App::new(node_id, raft.clone(), router, state_machine_store);
+    let app = App::new(node_id, raft.clone(), addr, router, state_machine_store);
 
     (raft, app)
 }
