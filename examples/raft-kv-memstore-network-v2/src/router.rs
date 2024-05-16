@@ -13,11 +13,11 @@ use crate::NodeId;
 /// Simulate a network router.
 #[derive(Debug, Clone)]
 #[derive(Default)]
-pub struct Router {
+pub struct SimulatedRouter {
     pub targets: Arc<Mutex<BTreeMap<NodeId, RequestTx>>>,
 }
 
-impl Router {
+impl SimulatedRouter {
     /// Send request `Req` to target node `to`, and wait for response `Result<Resp, RaftError<E>>`.
     pub async fn send<Req, Resp, E>(&self, to: NodeId, path: &str, req: Req) -> Result<Resp, RaftError<E>>
     where

@@ -8,10 +8,10 @@ use openraft::Snapshot;
 /// An RPC sent by the Raft leader to send chunks of a snapshot to a follower (§7).
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct InstallSnapshotRequest<C: RaftTypeConfig> {
     pub vote: Vote<C::NodeId>,
-    pub snapshot: Snapshot<C>,
+    pub uploaded_snapshot_id: i128,
 }
 
 impl<C: RaftTypeConfig> fmt::Display for InstallSnapshotRequest<C> {

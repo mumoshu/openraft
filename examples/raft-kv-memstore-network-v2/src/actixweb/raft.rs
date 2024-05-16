@@ -4,9 +4,10 @@ use actix_web::web::Json;
 use actix_web::Responder;
 use openraft::raft::AppendEntriesRequest;
 use crate::actixweb::install_snapshot::InstallSnapshotRequest;
+use crate::store::StateMachineData;
 use openraft::raft::VoteRequest;
 
-use crate::app::App;
+use crate::httpapp::App;
 use crate::TypeConfig;
 
 // --- Raft communication
@@ -28,6 +29,16 @@ pub async fn snapshot(
     app: Data<App>,
     req: Json<InstallSnapshotRequest<TypeConfig>>,
 ) -> actix_web::Result<impl Responder> {
-    let res = app.raft.install_full_snapshot(req.0.vote, req.0.snapshot).await;
+    let snapshot = get_uploaded_snapshot(req.0.uploaded_snapshot_id).await;
+    let res = app.raft.install_full_snapshot(req.0.vote, snapshot).await;
     Ok(Json(res))
+}
+
+async fn get_uploaded_snapshot(_uploaded_snapshot_id: i128) -> openraft::Snapshot<TypeConfig> {
+    // This is a placeholder for a real implementation.
+    // In a real application, the snapshot should be fetched from a storage.
+    openraft::Snapshot {
+        meta: Default::default(),
+        snapshot: Box::new(StateMachineData::default()),
+    }
 }

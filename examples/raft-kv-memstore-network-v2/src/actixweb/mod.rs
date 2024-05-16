@@ -1,5 +1,5 @@
 pub mod api;
 pub mod management;
-pub mod node;
+pub mod app;
 pub mod raft;
 pub mod install_snapshot;

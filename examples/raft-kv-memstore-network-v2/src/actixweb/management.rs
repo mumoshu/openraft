@@ -10,7 +10,7 @@ use openraft::error::Infallible;
 use openraft::BasicNode;
 use openraft::RaftMetrics;
 
-use crate::app::App;
+use crate::httpapp::App;
 use crate::NodeId;
 use crate::TypeConfig;
 

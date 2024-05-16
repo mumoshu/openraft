@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use openraft::BasicNode;
 use raft_kv_memstore_network_v2::new_raft;
-use raft_kv_memstore_network_v2::router::Router;
+use raft_kv_memstore_network_v2::router::SimulatedRouter;
 use raft_kv_memstore_network_v2::store::Request;
 use raft_kv_memstore_network_v2::typ;
 use tokio::task;
@@ -54,7 +54,7 @@ async fn test_cluster() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let router = Router::default();
+    let router = SimulatedRouter::default();
 
     let local = LocalSet::new();
 
@@ -73,7 +73,7 @@ async fn test_cluster() {
         .await;
 }
 
-async fn run_test(rafts: &[typ::Raft], router: Router) {
+async fn run_test(rafts: &[typ::Raft], router: SimulatedRouter) {
     let _ = router;
 
     // Wait for server to start up.

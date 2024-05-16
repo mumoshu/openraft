@@ -7,7 +7,7 @@ use openraft::error::Infallible;
 use openraft::error::RaftError;
 use web::Json;
 
-use crate::app::App;
+use crate::httpapp::App;
 use crate::store::Request;
 use crate::TypeConfig;
 

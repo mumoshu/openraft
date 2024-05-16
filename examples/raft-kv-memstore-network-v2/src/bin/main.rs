@@ -1,7 +1,8 @@
 use clap::Parser;
-use raft_kv_memstore_network_v2::new_raft;
-use raft_kv_memstore_network_v2::router::Router;
-use raft_kv_memstore_network_v2::actixweb::node::start_raft_node;
+use raft_kv_memstore_network_v2::{new_raft, new_http_raft};
+use raft_kv_memstore_network_v2::httprouter::HttpRouter;
+use raft_kv_memstore_network_v2::router::SimulatedRouter;
+use raft_kv_memstore_network_v2::actixweb::app::start_raft_node;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Clone, Debug)]
@@ -28,9 +29,14 @@ async fn main() -> std::io::Result<()> {
     // Parse the parameters passed by arguments.
     let options = Opt::parse();
 
-    let router = Router::default();
+    // let router = SimulatedRouter::default();
+    // let (_raft, app) = new_raft(options.id, router, options.http_addr).await;
+    // start_raft_node(app).await
 
-    let (_raft, app) = new_raft(options.id, router, options.http_addr).await;
-
-    start_raft_node(app, options.http_addr).await
+    let router = HttpRouter::default();
+    let (_raft, app) = new_http_raft(options.id, router, options.http_addr).await;
+    match app.run().await {
+        Some(()) => Ok(()),
+        None => Err(std::io::Error::new(std::io::ErrorKind::Other, "Error running the app")),
+    }
 }

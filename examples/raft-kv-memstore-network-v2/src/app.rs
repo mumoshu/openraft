@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 use crate::api;
-use crate::router::Router;
+use crate::router::SimulatedRouter;
 use crate::typ;
 use crate::NodeId;
 use crate::StateMachineStore;
@@ -22,14 +22,14 @@ pub struct App {
     pub addr: String,
 
     /// Receive application requests, Raft protocol request or management requests.
-    pub rx: Arc<mpsc::UnboundedReceiver<(Path, Payload, ResponseTx)>>,
-    pub router: Router,
+    pub rx: Arc<Mutex<mpsc::UnboundedReceiver<(Path, Payload, ResponseTx)>>>,
+    pub router: SimulatedRouter,
 
     pub state_machine: Arc<StateMachineStore>,
 }
 
 impl App {
-    pub fn new(id: NodeId, raft: typ::Raft, addr: String, router: Router, state_machine: Arc<StateMachineStore>) -> Self {
+    pub fn new(id: NodeId, raft: typ::Raft, addr: String, router: SimulatedRouter, state_machine: Arc<StateMachineStore>) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 
         {
@@ -37,7 +37,7 @@ impl App {
             targets.insert(id, tx);
         }
 
-        let rx = Arc::new(rx);
+        let rx = Arc::new(Mutex::new(rx));
 
         Self {
             id,
@@ -51,7 +51,7 @@ impl App {
 
     pub async fn run(mut self) -> Option<()> {
         loop {
-            let (path, payload, response_tx) = self.rx.recv().await?;
+            let (path, payload, response_tx) = self.rx.lock().unwrap().recv().await?;
 
             let res = match path.as_str() {
                 // Application API

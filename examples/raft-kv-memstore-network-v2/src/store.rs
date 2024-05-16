@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -25,6 +25,8 @@ pub type LogStore = memstore::LogStore<TypeConfig>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Request {
     Set { key: String, value: String },
+    Get { key: String, version: u128 },
+    Commit { keys_and_values: HashMap<String, String>, read_conflict_ranges: Vec<(String, String)>, write_conflict_ranges: Vec<(String, String)>, read_version: u128, write_version: u128 },
 }
 
 impl Request {
@@ -59,7 +61,7 @@ pub struct StateMachineData {
     pub last_membership: StoredMembership<TypeConfig>,
 
     /// Application data.
-    pub data: BTreeMap<String, String>,
+    pub data: Data,
 }
 
 /// Defines a state machine for the Raft cluster. This state machine represents a copy of the
@@ -156,7 +158,15 @@ impl RaftStateMachine<TypeConfig> for Arc<StateMachineStore> {
                         res.push(Response {
                             value: Some(value.clone()),
                         })
-                    }
+                    },
+                    Request::Get { key, version } => {
+                        let value = sm.data.get(key).cloned();
+                        res.push(Response { value })
+                    },
+                    Request::Commit { keys_and_values, read_conflict_ranges, write_conflict_ranges, read_version, write_version } => {
+                        let value = sm.data.commit(keys_and_values, read_conflict_ranges, write_conflict_ranges, read_version, write_version);
+                        res.push(Response { value })
+                    },
                 },
                 EntryPayload::Membership(ref mem) => {
                     sm.last_membership = StoredMembership::new(Some(entry.log_id), mem.clone());
@@ -214,5 +224,26 @@ impl RaftStateMachine<TypeConfig> for Arc<StateMachineStore> {
 
     async fn get_snapshot_builder(&mut self) -> Self::SnapshotBuilder {
         self.clone()
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+#[derive(Serialize, Deserialize)]
+pub struct Data {
+    pub data: BTreeMap<String, String>,
+}
+
+impl Data {
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.data.get(key)
+    }
+
+    pub fn insert(&mut self, key: String, value: String) {
+        self.data.insert(key, value);
+    }
+
+    pub fn commit(&mut self, keys_and_values: &HashMap<String, String>, read_conflict_ranges: &Vec<(String, String)>, write_conflict_ranges: &Vec<(String, String)>, read_version: &u128, write_version: &u128) -> Option<String> {
+        let s = "OK".to_string();
+        Some(s)
     }
 }

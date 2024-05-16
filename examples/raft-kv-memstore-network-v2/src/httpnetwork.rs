@@ -15,17 +15,18 @@ use openraft::RaftNetworkFactory;
 use openraft::Snapshot;
 use openraft::Vote;
 
-use crate::router::SimulatedRouter;
+use crate::httprouter::HttpRouter;
 use crate::typ;
 use crate::NodeId;
 use crate::TypeConfig;
 
+#[derive(Clone)]
 pub struct Connection {
-    router: SimulatedRouter,
+    router: HttpRouter,
     target: NodeId,
 }
 
-impl RaftNetworkFactory<TypeConfig> for SimulatedRouter {
+impl RaftNetworkFactory<TypeConfig> for HttpRouter {
     type Network = Connection;
 
     async fn new_client(&mut self, target: NodeId, _node: &BasicNode) -> Self::Network {
@@ -44,7 +45,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<AppendEntriesResponse<TypeConfig>, typ::RPCError> {
         let resp = self
             .router
-            .send(self.target, "/raft/append", req)
+            .send(self.target, "/raft_append", req)
             .await
             .map_err(|e| RemoteError::new(self.target, e))?;
         Ok(resp)
@@ -60,7 +61,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<SnapshotResponse<TypeConfig>, typ::StreamingError<typ::Fatal>> {
         let resp = self
             .router
-            .send::<_, _, typ::Infallible>(self.target, "/raft/snapshot", (vote, snapshot.meta, snapshot.snapshot))
+            .send::<_, _, typ::Infallible>(self.target, "/raft_snapshot", (vote, snapshot.meta, snapshot.snapshot))
             .await
             .map_err(|e| RemoteError::new(self.target, e.into_fatal().unwrap()))?;
         Ok(resp)
@@ -73,7 +74,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<VoteResponse<TypeConfig>, typ::RPCError> {
         let resp = self
             .router
-            .send(self.target, "/raft/vote", req)
+            .send(self.target, "/raft_vote", req)
             .await
             .map_err(|e| RemoteError::new(self.target, e))?;
         Ok(resp)
