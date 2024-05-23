@@ -16,13 +16,17 @@ use crate::TypeConfig;
 #[post("/raft_vote")]
 pub async fn vote(app: Data<App>, req: Json<VoteRequest<TypeConfig>>) -> actix_web::Result<impl Responder> {
     let res = app.raft.vote(req.0).await;
-    Ok(Json(res))
+    res
+        .map(|r| Json(r))
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))
 }
 
 #[post("/raft_append")]
 pub async fn append(app: Data<App>, req: Json<AppendEntriesRequest<TypeConfig>>) -> actix_web::Result<impl Responder> {
     let res = app.raft.append_entries(req.0).await;
-    Ok(Json(res))
+    res
+        .map(|r| Json(r))
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))
 }
 
 #[post("/raft_snapshot")]
@@ -37,7 +41,9 @@ pub async fn snapshot(
         snapshot: Box::new(snapshot_data),
     };
     let res = app.raft.install_full_snapshot(v, snapshot).await;
-    Ok(Json(res))
+    res
+        .map(|r| Json(r))
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e))
 }
 
 async fn get_uploaded_snapshot(_uploaded_snapshot_id: i128) -> openraft::Snapshot<TypeConfig> {

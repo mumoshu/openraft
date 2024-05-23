@@ -13,6 +13,7 @@ use openraft::BasicNode;
 use openraft::OptionalSend;
 use openraft::RaftNetworkFactory;
 use openraft::Snapshot;
+use openraft::SnapshotMeta;
 use openraft::Vote;
 
 use crate::httprouter::HttpRouter;
@@ -39,6 +40,8 @@ impl RaftNetworkFactory<TypeConfig> for HttpRouter {
     }
 }
 
+type SnapshotReq = (Vote<NodeId>, typ::SnapshotMeta, Box<typ::SnapshotData>);
+
 impl RaftNetworkV2<TypeConfig> for Connection {
     async fn append_entries(
         &mut self,
@@ -48,9 +51,11 @@ impl RaftNetworkV2<TypeConfig> for Connection {
         let resp = self
             .router
             .send(self.target, "raft_append", req)
-            .await
-            .map_err(|e| RemoteError::new(self.target, e))?;
-        Ok(resp)
+            .await;
+        // print errro for debugging
+        tracing::error!("RESPONSE===== {:?}", resp);
+        // return the error
+        resp.map_err(|e| openraft::error::RPCError::Network(openraft::error::NetworkError::new(&e)))
     }
 
     /// A real application should replace this method with customized implementation.
@@ -63,10 +68,10 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<SnapshotResponse<TypeConfig>, typ::StreamingError<typ::Fatal>> {
         let resp = self
             .router
-            .send::<_, _, typ::Infallible>(self.target, "raft_snapshot", (vote, snapshot.meta, snapshot.snapshot))
-            .await
-            .map_err(|e| RemoteError::new(self.target, e.into_fatal().unwrap()))?;
-        Ok(resp)
+            .send::<SnapshotReq, SnapshotResponse<TypeConfig>>(self.target, "raft_snapshot", (vote, snapshot.meta, snapshot.snapshot))
+            .await;
+        let resp: Result<SnapshotResponse<TypeConfig>, typ::StreamingError<typ::Fatal>> = resp.map_err(|e| typ::StreamingError::Network(openraft::error::NetworkError::new(&e)));
+        resp
     }
 
     async fn vote(
@@ -77,8 +82,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
         let resp = self
             .router
             .send(self.target, "raft_vote", req)
-            .await
-            .map_err(|e| RemoteError::new(self.target, e))?;
-        Ok(resp)
+            .await;
+        resp.map_err(|e| openraft::error::RPCError::Network(openraft::error::NetworkError::new(&e)))
     }
 }

@@ -2,6 +2,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use openraft::error::NetworkError;
+use openraft::error::RemoteError;
+
 use crate::{encode, decode};
 use crate::typ::RaftError;
 use crate::NodeId;
@@ -24,10 +27,9 @@ impl HttpRouter {
     }
 
     /// Send request `Req` to target node `to`, and wait for response `Result<Resp, RaftError<E>>`.
-    pub async fn send<Req, Resp, E>(&self, to: NodeId, path: &str, req: Req) -> Result<Resp, RaftError<E>>
+    pub async fn send<Req, Resp>(&self, to: NodeId, path: &str, req: Req) -> Result<Resp, reqwest::Error>
     where
         Req: serde::Serialize,
-        Result<Resp, RaftError<E>>: serde::de::DeserializeOwned,
         Resp: serde::de::DeserializeOwned,
     {
         let addr = self.get_addr(to);
@@ -37,11 +39,15 @@ impl HttpRouter {
 
         let client = reqwest::Client::new();
 
-        let resp = client.post(url).json(&req).send().await.unwrap();
-        let res =
-            resp.json().await;
-        let res = res.unwrap();
+        let resp = client.post(url).json(&req).send().await?;
 
-        Ok(res)
+        resp.json().await
+
+        // let res =
+        //     resp.json().await;
+            
+        // let res = res.unwrap();
+
+        // Ok(res)
     }
 }
