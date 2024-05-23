@@ -32,6 +32,8 @@ awc = "3.4.0"
 bytes = { version = "1.6.0", features = ["std", "serde"] }
 thiserror = "1.0.60"
 anyerror = "0.1.12"
+log = "0.4.21"
+env_logger = "0.11.3"
 
 [dev-dependencies]
 maplit = "1.0.2"

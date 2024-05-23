@@ -3,12 +3,12 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-use crate::api;
 use crate::httprouter::HttpRouter;
 use crate::typ;
 use crate::NodeId;
 use crate::StateMachineStore;
 
+use crate::actixweb::api;
 use crate::actixweb::raft;
 use crate::actixweb::management;
 
@@ -65,14 +65,18 @@ impl App {
                 .service(management::change_membership)
                 .service(management::metrics)
                 // application API
-                .service(crate::actixweb::api::write)
-                .service(crate::actixweb::api::read)
+                .service(api::write)
+                .service(api::read)
+                .service(api::local_read)
+                .service(api::consistent_read)
                 // .service(api::consistent_read)
         });
 
         let x = server.bind(addr);
         let x = x.ok().unwrap();
 
-        x.run().await.ok()
+        let r = x.run().await;
+        let r = r.unwrap();
+        Some(r)
     }
 }

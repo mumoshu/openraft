@@ -26,6 +26,7 @@ pub type LogStore = memstore::LogStore<TypeConfig>;
 pub enum Request {
     Set { key: String, value: String },
     Get { key: String, version: u128 },
+    Scan { start_key: String, end_key: String, version: u128 },
     Commit { keys_and_values: HashMap<String, String>, read_conflict_ranges: Vec<(String, String)>, write_conflict_ranges: Vec<(String, String)>, read_version: u128, write_version: u128 },
 }
 
@@ -41,6 +42,14 @@ impl Request {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Response {
     pub value: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, thiserror::Error)]
+pub enum Error {
+    #[error("consistent read failed: {0}")]
+    ConsistentReadFailed(String),
+    #[error("read failed")]
+    ReadFailed,
 }
 
 #[derive(Debug)]
@@ -163,6 +172,15 @@ impl RaftStateMachine<TypeConfig> for Arc<StateMachineStore> {
                         let value = sm.data.get(key).cloned();
                         res.push(Response { value })
                     },
+                    Request::Scan { start_key, end_key, version } => {
+                        let mut values = Vec::new();
+                        for (k, v) in &sm.data.data {
+                            if k.as_str() >= start_key.as_str() && k.as_str() <= end_key.as_str() {
+                                values.push((k.clone(), v.clone()));
+                            }
+                        }
+                        res.push(Response { value: Some(serde_json::to_string(&values).unwrap()) })
+                    },
                     Request::Commit { keys_and_values, read_conflict_ranges, write_conflict_ranges, read_version, write_version } => {
                         let value = sm.data.commit(keys_and_values, read_conflict_ranges, write_conflict_ranges, read_version, write_version);
                         res.push(Response { value })
@@ -243,6 +261,9 @@ impl Data {
     }
 
     pub fn commit(&mut self, keys_and_values: &HashMap<String, String>, read_conflict_ranges: &Vec<(String, String)>, write_conflict_ranges: &Vec<(String, String)>, read_version: &u128, write_version: &u128) -> Option<String> {
+        for (k, v) in keys_and_values {
+            self.data.insert(k.clone(), v.clone());
+        }
         let s = "OK".to_string();
         Some(s)
     }

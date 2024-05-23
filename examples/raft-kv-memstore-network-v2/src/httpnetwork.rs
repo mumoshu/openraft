@@ -29,9 +29,11 @@ pub struct Connection {
 impl RaftNetworkFactory<TypeConfig> for HttpRouter {
     type Network = Connection;
 
-    async fn new_client(&mut self, target: NodeId, _node: &BasicNode) -> Self::Network {
+    async fn new_client(&mut self, target: NodeId, node: &BasicNode) -> Self::Network {
+        let mut r = HttpRouter::default();
+        r.targets.lock().unwrap().insert(target, node.addr.clone());
         Connection {
-            router: self.clone(),
+            router: r,
             target,
         }
     }
@@ -45,7 +47,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<AppendEntriesResponse<TypeConfig>, typ::RPCError> {
         let resp = self
             .router
-            .send(self.target, "/raft_append", req)
+            .send(self.target, "raft_append", req)
             .await
             .map_err(|e| RemoteError::new(self.target, e))?;
         Ok(resp)
@@ -61,7 +63,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<SnapshotResponse<TypeConfig>, typ::StreamingError<typ::Fatal>> {
         let resp = self
             .router
-            .send::<_, _, typ::Infallible>(self.target, "/raft_snapshot", (vote, snapshot.meta, snapshot.snapshot))
+            .send::<_, _, typ::Infallible>(self.target, "raft_snapshot", (vote, snapshot.meta, snapshot.snapshot))
             .await
             .map_err(|e| RemoteError::new(self.target, e.into_fatal().unwrap()))?;
         Ok(resp)
@@ -74,7 +76,7 @@ impl RaftNetworkV2<TypeConfig> for Connection {
     ) -> Result<VoteResponse<TypeConfig>, typ::RPCError> {
         let resp = self
             .router
-            .send(self.target, "/raft_vote", req)
+            .send(self.target, "raft_vote", req)
             .await
             .map_err(|e| RemoteError::new(self.target, e))?;
         Ok(resp)

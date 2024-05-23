@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
+use actix_web::error::ErrorInternalServerError;
 use actix_web::get;
 use actix_web::post;
 use actix_web::web::Data;
@@ -26,14 +27,16 @@ pub async fn add_learner(app: Data<App>, req: Json<(NodeId, String)>) -> actix_w
     let node_id = req.0 .0;
     let node = BasicNode { addr: req.0 .1.clone() };
     let res = app.raft.add_learner(node_id, node, true).await;
-    Ok(Json(res))
+    let res = res.map_err(|e| ErrorInternalServerError(e));
+    res.map(|r| Json(r))
 }
 
 /// Changes specified learners to members, or remove members.
 #[post("/change-membership")]
 pub async fn change_membership(app: Data<App>, req: Json<BTreeSet<NodeId>>) -> actix_web::Result<impl Responder> {
     let res = app.raft.change_membership(req.0, false).await;
-    Ok(Json(res))
+    let res = res.map_err(|e| ErrorInternalServerError(e));
+    res.map(|r| Json(r))
 }
 
 /// Initialize a single-node cluster.
@@ -42,7 +45,8 @@ pub async fn init(app: Data<App>) -> actix_web::Result<impl Responder> {
     let mut nodes = BTreeMap::new();
     nodes.insert(app.id, BasicNode { addr: app.addr.clone() });
     let res = app.raft.initialize(nodes).await;
-    Ok(Json(res))
+    let res = res.map_err(|e| ErrorInternalServerError(e));
+    res.map(|_| Json(()))
 }
 
 /// Get the latest metrics of the cluster
